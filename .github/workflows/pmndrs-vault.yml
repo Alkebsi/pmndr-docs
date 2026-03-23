@@ -1,47 +1,25 @@
-name: Poimandres Offline Vault
+name: Scrape PMNDRS Docs
 on: workflow_dispatch
 
 jobs:
-  build:
+  scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Install Static Scraper
+        run: sudo apt-get install wget
 
-      - name: Setup Node & pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build R3F & Drei
-        # We build them sequentially in one runner to avoid variable collisions
-        # And we use the 'next build' command directly to see the logs if it fails
+      - name: Mirror R3F
         run: |
-          export OUTPUT=export
-          export HOME_REDIRECT=/getting-started/introduction
+          wget --mirror --convert-links --adjust-extension --page-requisites \
+          --no-parent https://docs.pmnd.rs/react-three-fiber/
           
-          # Build R3F
-          export MDX=docs/react-three-fiber
-          export NEXT_PUBLIC_LIBNAME="React Three Fiber"
-          pnpm build
-          mv out out-r3f
+      - name: Mirror Drei
+        run: |
+          wget --mirror --convert-links --adjust-extension --page-requisites \
+          --no-parent https://docs.pmnd.rs/drei/
 
-          # Build Drei
-          export MDX=docs/drei
-          export NEXT_PUBLIC_LIBNAME="Drei"
-          pnpm build
-          mv out out-drei
-
-      - name: Upload Docs
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: PMNDRS-Docs
-          path: |
-            out-r3f
-            out-drei
+          name: PMNDRS-Offline-Mirror
+          path: docs.pmnd.rs/
