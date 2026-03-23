@@ -4,51 +4,44 @@ on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - id: r3f
-            path: 'docs/react-three-fiber'
-          - id: drei
-            path: 'docs/drei'
-          - id: zustand
-            path: 'docs/zustand'
-          - id: postprocessing
-            path: 'docs/react-postprocessing'
-          - id: jotai
-            path: 'docs/jotai'
-          - id: valtio
-            path: 'docs/valtio'
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install pnpm
+      - name: Setup Node & pnpm
         uses: pnpm/action-setup@v3
         with:
           version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
-      - name: Install Dependencies
-        run: pnpm install
+      - name: Install
+        run: pnpm install --frozen-lockfile
 
-      - name: Build Library Docs
-        # We manually set the variables their Docker image usually sets
-        run: pnpm build
-        env:
-          MDX: ${{ matrix.path }}
-          NEXT_PUBLIC_LIBNAME: ${{ matrix.id }}
-          BASE_PATH: '/${{ matrix.id }}'
-          OUTPUT: 'export'
-          HOME_REDIRECT: '/getting-started/introduction'
+      - name: Build R3F & Drei
+        # We build them sequentially in one runner to avoid variable collisions
+        # And we use the 'next build' command directly to see the logs if it fails
+        run: |
+          export OUTPUT=export
+          export HOME_REDIRECT=/getting-started/introduction
+          
+          # Build R3F
+          export MDX=docs/react-three-fiber
+          export NEXT_PUBLIC_LIBNAME="React Three Fiber"
+          pnpm build
+          mv out out-r3f
 
-      - name: Upload Artifact
+          # Build Drei
+          export MDX=docs/drei
+          export NEXT_PUBLIC_LIBNAME="Drei"
+          pnpm build
+          mv out out-drei
+
+      - name: Upload Docs
         uses: actions/upload-artifact@v4
         with:
-          name: docs-${{ matrix.id }}
-          path: out/ # Standard Next.js export folder
+          name: PMNDRS-Docs
+          path: |
+            out-r3f
+            out-drei
