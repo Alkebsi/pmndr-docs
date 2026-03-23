@@ -1,0 +1,57 @@
+name: Poimandres Offline Vault
+on: workflow_dispatch
+
+jobs:
+  # This strategy runs multiple builds at once
+  build-docs:
+    strategy:
+      matrix:
+        include:
+          - id: r3f
+            path: 'docs/react-three-fiber'
+            name: 'React Three Fiber'
+          - id: drei
+            path: 'docs/drei'
+            name: 'Drei'
+          - id: zustand
+            path: 'docs/zustand'
+            name: 'Zustand'
+          - id: postprocessing
+            path: 'docs/react-postprocessing'
+            name: 'Postprocessing'
+          - id: jotai
+            path: 'docs/jotai'
+            name: 'Jotai'
+          - id: valtio
+            path: 'docs/valtio'
+            name: 'Valtio'
+
+    uses: ./.github/workflows/build.yml
+    with:
+      mdx: ${{ matrix.path }}
+      libname: ${{ matrix.name }}
+      libname_short: ${{ matrix.id }}
+      # This ensures each build gets its own unique artifact name
+      base_path: '/${{ matrix.id }}' 
+
+  # Final step to combine them all into one ZIP
+  combine:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./vault
+          pattern: github-pages* # Matches the default names from build.yml
+
+      - name: Zip Everything
+        run: |
+          cd vault
+          zip -r ../pmndrs-complete-docs.zip .
+
+      - name: Upload Final Vault
+        uses: actions/upload-artifact@v4
+        with:
+          name: PMNDRS-OFFLINE-FULL
+          path: pmndrs-complete-docs.zip
