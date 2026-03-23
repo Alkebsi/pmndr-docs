@@ -2,58 +2,53 @@ name: Poimandres Offline Vault
 on: workflow_dispatch
 
 jobs:
-  build-docs:
+  build:
+    runs-on: ubuntu-latest
     strategy:
-      fail-fast: false # Keep going even if one library fails
+      fail-fast: false
       matrix:
         include:
           - id: r3f
             path: 'docs/react-three-fiber'
-            name: 'React Three Fiber'
           - id: drei
             path: 'docs/drei'
-            name: 'Drei'
           - id: zustand
             path: 'docs/zustand'
-            name: 'Zustand'
           - id: postprocessing
             path: 'docs/react-postprocessing'
-            name: 'Postprocessing'
           - id: jotai
             path: 'docs/jotai'
-            name: 'Jotai'
           - id: valtio
             path: 'docs/valtio'
-            name: 'Valtio'
-          - id: cannon
-            path: 'docs/react-three-cannon'
-            name: 'Cannon'
 
-    uses: ./.github/workflows/build.yml
-    with:
-      mdx: ${{ matrix.path }}
-      libname: ${{ matrix.name }}
-      libname_short: ${{ matrix.id }}
-      base_path: '/${{ matrix.id }}'
-      home_redirect: '/getting-started/introduction' # Added the missing required input
-
-  combine:
-    needs: build-docs
-    runs-on: ubuntu-latest
     steps:
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          path: ./vault
-          pattern: github-pages*
+          node-version: 20
 
-      - name: Zip Everything
-        run: |
-          cd vault
-          zip -r ../pmndrs-complete-docs.zip .
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
 
-      - name: Upload Final Vault
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Build Library Docs
+        # We manually set the variables their Docker image usually sets
+        run: pnpm build
+        env:
+          MDX: ${{ matrix.path }}
+          NEXT_PUBLIC_LIBNAME: ${{ matrix.id }}
+          BASE_PATH: '/${{ matrix.id }}'
+          OUTPUT: 'export'
+          HOME_REDIRECT: '/getting-started/introduction'
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PMNDRS-OFFLINE-FULL
-          path: pmndrs-complete-docs.zip
+          name: docs-${{ matrix.id }}
+          path: out/ # Standard Next.js export folder
