@@ -2,9 +2,9 @@ name: Poimandres Offline Vault
 on: workflow_dispatch
 
 jobs:
-  # This strategy runs multiple builds at once
   build-docs:
     strategy:
+      fail-fast: false # Keep going even if one library fails
       matrix:
         include:
           - id: r3f
@@ -25,16 +25,18 @@ jobs:
           - id: valtio
             path: 'docs/valtio'
             name: 'Valtio'
+          - id: cannon
+            path: 'docs/react-three-cannon'
+            name: 'Cannon'
 
     uses: ./.github/workflows/build.yml
     with:
       mdx: ${{ matrix.path }}
       libname: ${{ matrix.name }}
       libname_short: ${{ matrix.id }}
-      # This ensures each build gets its own unique artifact name
-      base_path: '/${{ matrix.id }}' 
+      base_path: '/${{ matrix.id }}'
+      home_redirect: '/getting-started/introduction' # Added the missing required input
 
-  # Final step to combine them all into one ZIP
   combine:
     needs: build-docs
     runs-on: ubuntu-latest
@@ -43,7 +45,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./vault
-          pattern: github-pages* # Matches the default names from build.yml
+          pattern: github-pages*
 
       - name: Zip Everything
         run: |
