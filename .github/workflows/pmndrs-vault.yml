@@ -12,21 +12,38 @@ jobs:
           repository: pmndrs/docs
           path: engine
 
-      # 2. Download the actual Markdown content for R3F
-      - name: Checkout R3F Content
+      # 2. Download Content Repos
+      - name: Checkout R3F
         uses: actions/checkout@v4
         with:
           repository: pmndrs/react-three-fiber
           path: content-r3f
 
-      # 3. Download the actual Markdown content for Drei
-      - name: Checkout Drei Content
+      - name: Checkout Drei
         uses: actions/checkout@v4
         with:
           repository: pmndrs/drei
           path: content-drei
 
-      # 4. Setup Node Environment
+      - name: Checkout Zustand
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/zustand
+          path: content-zustand
+
+      - name: Checkout Leva
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/leva
+          path: content-leva
+
+      - name: Checkout Rapier
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/react-three-rapier
+          path: content-rapier
+
+      # 3. Setup Node Environment
       - name: Setup Node & pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -37,8 +54,8 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: engine/pnpm-lock.yaml
 
-      # 5. Build Everything
-      - name: Build R3F and Drei
+      # 4. Build Everything Sequentially
+      - name: Build All Libraries
         run: |
           cd engine
           pnpm install
@@ -48,25 +65,44 @@ jobs:
           export HOME_REDIRECT=/getting-started/introduction
           export NEXT_PUBLIC_URL="http://localhost:8080"
           
-          # Inject R3F content into the engine and build
+          # Build R3F
           export MDX=$GITHUB_WORKSPACE/content-r3f/docs
           export NEXT_PUBLIC_LIBNAME="React Three Fiber"
           export BASE_PATH="/r3f"
-          pnpm build
-          mv out ../out-r3f
+          pnpm build && mv out ../out-r3f
 
-          # Inject Drei content into the engine and build
+          # Build Drei
           export MDX=$GITHUB_WORKSPACE/content-drei/docs
           export NEXT_PUBLIC_LIBNAME="Drei"
           export BASE_PATH="/drei"
-          pnpm build
-          mv out ../out-drei
+          pnpm build && mv out ../out-drei
 
-      # 6. Give you the ZIP file
-      - name: Upload Final ZIP
+          # Build Zustand
+          export MDX=$GITHUB_WORKSPACE/content-zustand/docs
+          export NEXT_PUBLIC_LIBNAME="Zustand"
+          export BASE_PATH="/zustand"
+          pnpm build && mv out ../out-zustand
+
+          # Build Leva
+          export MDX=$GITHUB_WORKSPACE/content-leva/docs
+          export NEXT_PUBLIC_LIBNAME="Leva"
+          export BASE_PATH="/leva"
+          pnpm build && mv out ../out-leva
+
+          # Build Rapier
+          export MDX=$GITHUB_WORKSPACE/content-rapier/docs
+          export NEXT_PUBLIC_LIBNAME="Rapier"
+          export BASE_PATH="/rapier"
+          pnpm build && mv out ../out-rapier
+
+      # 5. Give you the Unified ZIP
+      - name: Upload Final Vault
         uses: actions/upload-artifact@v4
         with:
-          name: PMNDRS-Offline-Vault
+          name: PMNDRS-Mega-Vault
           path: |
             out-r3f/
             out-drei/
+            out-zustand/
+            out-leva/
+            out-rapier/
