@@ -1,25 +1,72 @@
-name: Scrape PMNDRS Docs
+name: Build PMNDRS Docs (The Right Way)
 on: workflow_dispatch
 
 jobs:
-  scrape:
+  build-offline-docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Static Scraper
-        run: sudo apt-get install wget
+      # 1. Download the Next.js Docs Engine
+      - name: Checkout Docs Engine
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/docs
+          path: engine
 
-      - name: Mirror R3F
+      # 2. Download the actual Markdown content for R3F
+      - name: Checkout R3F Content
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/react-three-fiber
+          path: content-r3f
+
+      # 3. Download the actual Markdown content for Drei
+      - name: Checkout Drei Content
+        uses: actions/checkout@v4
+        with:
+          repository: pmndrs/drei
+          path: content-drei
+
+      # 4. Setup Node Environment
+      - name: Setup Node & pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: engine/pnpm-lock.yaml
+
+      # 5. Build Everything
+      - name: Build R3F and Drei
         run: |
-          wget --mirror --convert-links --adjust-extension --page-requisites \
-          --no-parent https://docs.pmnd.rs/react-three-fiber/
+          cd engine
+          pnpm install
           
-      - name: Mirror Drei
-        run: |
-          wget --mirror --convert-links --adjust-extension --page-requisites \
-          --no-parent https://docs.pmnd.rs/drei/
+          # Global variables the engine needs
+          export OUTPUT=export
+          export HOME_REDIRECT=/getting-started/introduction
+          export NEXT_PUBLIC_URL="http://localhost:8080"
+          
+          # Inject R3F content into the engine and build
+          export MDX=$GITHUB_WORKSPACE/content-r3f/docs
+          export NEXT_PUBLIC_LIBNAME="React Three Fiber"
+          export BASE_PATH="/r3f"
+          pnpm build
+          mv out ../out-r3f
 
-      - name: Upload
+          # Inject Drei content into the engine and build
+          export MDX=$GITHUB_WORKSPACE/content-drei/docs
+          export NEXT_PUBLIC_LIBNAME="Drei"
+          export BASE_PATH="/drei"
+          pnpm build
+          mv out ../out-drei
+
+      # 6. Give you the ZIP file
+      - name: Upload Final ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PMNDRS-Offline-Mirror
-          path: docs.pmnd.rs/
+          name: PMNDRS-Offline-Vault
+          path: |
+            out-r3f/
+            out-drei/
